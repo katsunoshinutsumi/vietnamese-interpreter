@@ -49,7 +49,7 @@ header .wrap { padding-block: 12px; display: flex; flex-wrap: wrap; gap: 10px 14
 h1 { font-size: 20px; font-weight: 800; margin: 0; line-height: 1.2; }
 h1 small { display: block; font-family: var(--f-vi); font-weight: 700; font-size: 12px; opacity: .75; letter-spacing: .02em; }
 .settings { min-width: 0; }
-.settings summary { list-style: none; cursor: pointer; font-weight: 800; font-size: 14px; background: #fff; color: #2b2140; border: 2px solid #2b2140; border-radius: 999px; padding: 6px 14px; box-shadow: 2px 2px 0 #2b2140; user-select: none; }
+.settings summary { display: inline-block; list-style: none; cursor: pointer; font-weight: 800; font-size: 14px; background: #fff; color: #2b2140; border: 2px solid #2b2140; border-radius: 999px; padding: 6px 14px; box-shadow: 2px 2px 0 #2b2140; user-select: none; }
 .settings summary::-webkit-details-marker { display: none; }
 .settings summary::before { content: "▸ "; } .settings[open] summary::before { content: "▾ "; }
 .settings[open] summary { margin-bottom: 8px; }
@@ -57,6 +57,9 @@ h1 small { display: block; font-family: var(--f-vi); font-weight: 700; font-size
 @media (min-width: 760px) { .settings summary { display: none; } .settings[open] summary { margin: 0; } header .wrap { flex-wrap: nowrap; } }
 button, select { font: inherit; cursor: pointer; color: inherit; max-width: 100%; }
 select { min-width: 0; font-size: 13px; font-weight: 700; border-radius: 999px; border: 2px solid #2b2140; background: #fff; color: #2b2140; padding: 6px 10px; }
+.field { min-width: 0; flex: 1 1 160px; font: inherit; font-size: 13px; font-weight: 700; border-radius: 999px; border: 2px solid #2b2140; background: #fff; color: #2b2140; padding: 6px 12px; }
+.field.wide { flex-basis: 260px; }
+.field::placeholder { color: #8a7fa0; font-weight: 400; }
 label.chk { display: flex; gap: 5px; align-items: center; font-size: 13px; font-weight: 700; background: rgb(255 255 255 / .6); border-radius: 999px; padding: 5px 10px 5px 8px; }
 label.chk input { accent-color: var(--grape); width: 16px; height: 16px; margin: 0; }
 button:focus-visible, select:focus-visible, label.chk:focus-within { outline: 3px solid var(--grape); outline-offset: 2px; }
@@ -131,6 +134,9 @@ main .wrap { padding-block: 18px; display: flex; flex-direction: column; gap: 14
     </select>
     <label class="chk"><input type="checkbox" id="pingpong" checked> 交互に自動切替</label>
     <label class="chk"><input type="checkbox" id="auto" checked> 読み上げ</label>
+    <label class="chk"><input type="checkbox" id="aiOn" checked> AI翻訳（やさしい表現）</label>
+    <input class="field" type="password" id="apiKey" placeholder="Claude APIキー" autocomplete="off" aria-label="Claude APIキー">
+    <input class="field wide" type="text" id="family" placeholder="家族メモ（例：日本語はパパ、ベトナム語はママ）" aria-label="家族メモ">
   </div>
   </details>
 </div></header>
@@ -164,6 +170,8 @@ main .wrap { padding-block: 18px; display: flex; flex-direction: column; gap: 14
 <script>
 const $ = s => document.querySelector(s);
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+// a local server.js relays the online voice; on a public host the page talks to Google directly
+const HAS_PROXY = ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
 const L = {
   ja: { hear: 'ja-JP', say: 'ja-JP', cls: '', other: 'vi', btn: '#talkJa', listen: '日本語を聞いています…', voice: '#voiceJa' },
   vi: { hear: 'vi-VN', say: 'vi-VN', cls: 'vi-t', other: 'ja', btn: '#talkVi', listen: 'Đang nghe tiếng Việt…', voice: '#voiceVi' },
@@ -208,7 +216,6 @@ function chunks(text) {
   if (rest) out.push(rest);
   return out;
 }
-const HAS_PROXY = /^(localhost|127.0.0.1|[::1])$/.test(location.hostname);
 const player = new Audio();
 player.referrerPolicy = 'no-referrer';
 const ttsUrl = (q, code) => HAS_PROXY
@@ -263,6 +270,52 @@ async function translate(q, sl, tl) {
   }
   cache.set(key, out);
   return out;
+}
+
+// ---- natural translation with Claude (the key stays in this browser only)
+const SDK_URL = 'https://cdn.jsdelivr.net/npm/@anthropic-ai/sdk@0.132.1/+esm';
+const SYSTEM = `You interpret a spoken conversation inside a family: one person speaks Japanese, the other speaks Vietnamese.
+Translate the latest utterance into the other language the way a warm, caring family member would say it out loud: gentle, kind, natural spoken language, never stiff or word-for-word.
+Japanese: soft everyday speech (for example 〜だよ, 〜してね, 〜かな). Avoid formal keigo unless the speaker is clearly being formal.
+Vietnamese: choose natural family pronouns and particles (con, mẹ, bố, anh, em, ông, bà, nhé, nha, ạ for elders) from the family notes and the conversation so far; when unsure, use warm neutral wording.
+Keep the meaning, the feeling and the amount of detail. Do not add new content, explanations or quotation marks.
+The input comes from speech recognition and may contain small mistakes; translate what the speaker meant.
+Reply with the translation only.`;
+const NAMES = { ja: 'Japanese', vi: 'Vietnamese' };
+const history = [];
+let sdk = null, claude = null, claudeKey = '';
+async function getClaude() {
+  const key = $('#apiKey').value.trim();
+  if (!key) return null;
+  if (!sdk) sdk = (await import(SDK_URL)).default;
+  if (!claude || claudeKey !== key) { claude = new sdk({ apiKey: key, dangerouslyAllowBrowser: true }); claudeKey = key; }
+  return claude;
+}
+async function translateNatural(text, sl, tl) {
+  const client = await getClaude();
+  if (!client) return null;
+  const family = $('#family').value.trim();
+  const recent = history.slice(-6).map(t => `${NAMES[t.from]} speaker: ${t.src}`).join('\n');
+  const prompt = (family ? `Family notes: ${family}\n\n` : '') +
+    (recent ? `Conversation so far:\n${recent}\n\n` : '') +
+    `Translate this ${NAMES[sl]} utterance into ${NAMES[tl]}:\n${text}`;
+  const res = await client.beta.messages.create({
+    model: 'claude-opus-5-5',
+    max_tokens: 2000,
+    betas: ['server-side-fallback-2026-07-01'],
+    fallbacks: 'default',
+    output_config: { effort: 'low' },
+    system: SYSTEM,
+    messages: [{ role: 'user', content: prompt }],
+  });
+  if (res.stop_reason === 'refusal') return null;
+  const out = res.content.filter(b => b.type === 'text').map(b => b.text).join('').trim();
+  return out || null;
+}
+function claudeError(e) {
+  if (sdk && e instanceof sdk.AuthenticationError) return 'Claude APIキーが正しくありません。Google 翻訳を使いました。';
+  if (sdk && e instanceof sdk.RateLimitError) return 'AI翻訳が混み合っています。Google 翻訳を使いました。';
+  return 'AI翻訳に失敗したので、Google 翻訳を使いました。';
 }
 
 function addTurn(src, dst, from) {
@@ -331,7 +384,14 @@ async function flush(code) {
   stopRec(); paintButtons('busy'); setStatus('翻訳中… / Đang dịch…');
   const to = L[code].other;
   try {
-    const out = await translate(text, code, to);
+    let out = null, note = '';
+    if ($('#aiOn').checked && $('#apiKey').value.trim()) {
+      setStatus('やさしい表現に整えています… / Đang dịch…');
+      try { out = await translateNatural(text, code, to); } catch (e) { note = claudeError(e); }
+    }
+    if (!out) out = await translate(text, code, to);
+    history.push({ from: code, src: text, dst: out });
+    if (note) setStatus(note, true);
     liveSeq++; $('#liveSrc').textContent = ''; $('#liveDst').textContent = '';
     addTurn(text, out, code);
     if ($('#auto').checked) { setStatus(to === 'vi' ? 'Đang đọc…' : '読み上げ中…'); await speak(out, to); }
@@ -360,6 +420,10 @@ $('#talkJa').onclick = () => begin('ja');
 $('#talkVi').onclick = () => begin('vi');
 $('#stop').onclick = stopAll;
 
+for (const id of ['apiKey', 'family']) {
+  try { $('#' + id).value = localStorage.getItem('vi-interp-' + id) || ''; } catch {}
+  $('#' + id).addEventListener('change', e => { try { localStorage.setItem('vi-interp-' + id, e.target.value.trim()); } catch {} });
+}
 if (matchMedia('(min-width: 760px)').matches) $('#settings').open = true;
 
 // #demo shows a sample conversation (for checking the design)
