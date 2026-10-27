@@ -15,7 +15,7 @@
   --bg: #fff7ec; --dot: #ffe1ea; --surface: #ffffff; --ink: #2b2140; --muted: #6e6385; --line: #eadff5;
   --ja: #ff6b6b; --ja-deep: #d94848; --ja-soft: #ffe6e3;
   --vi: #1fb5a3; --vi-deep: #13897b; --vi-soft: #d6f5f0;
-  --sun: #ffd23f; --sun-deep: #e0a800; --grape: #8c6cf2; --grape-soft: #ece6ff;
+  --sun: #ffd23f; --sun-deep: #e0a800; --grape: #8c6cf2; --grape-deep: #6343d6; --grape-soft: #ece6ff;
   --f-ja: "M PLUS Rounded 1c", "Hiragino Maru Gothic ProN", "Yu Gothic", sans-serif;
   --f-vi: "Nunito", "Segoe UI", sans-serif;
 }
@@ -23,12 +23,12 @@
   --bg: #1d1830; --dot: #2a2344; --surface: #2a2340; --ink: #f6f0ff; --muted: #b9add3; --line: #3b3259;
   --ja: #ff7d7d; --ja-deep: #c24545; --ja-soft: #45263a;
   --vi: #36d1bd; --vi-deep: #1a8d7f; --vi-soft: #1b3d3f;
-  --sun: #ffd23f; --sun-deep: #b98f00; --grape: #a88dff; --grape-soft: #362c5c; color-scheme: dark } }
+  --sun: #ffd23f; --sun-deep: #b98f00; --grape: #a88dff; --grape-deep: #6a4bd8; --grape-soft: #362c5c; color-scheme: dark } }
 :root[data-theme="dark"] {
   --bg: #1d1830; --dot: #2a2344; --surface: #2a2340; --ink: #f6f0ff; --muted: #b9add3; --line: #3b3259;
   --ja: #ff7d7d; --ja-deep: #c24545; --ja-soft: #45263a;
   --vi: #36d1bd; --vi-deep: #1a8d7f; --vi-soft: #1b3d3f;
-  --sun: #ffd23f; --sun-deep: #b98f00; --grape: #a88dff; --grape-soft: #362c5c; color-scheme: dark }
+  --sun: #ffd23f; --sun-deep: #b98f00; --grape: #a88dff; --grape-deep: #6a4bd8; --grape-soft: #362c5c; color-scheme: dark }
 * { box-sizing: border-box }
 html, body { height: 100%; }
 body { height: 100dvh; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
@@ -43,7 +43,7 @@ body {
 /* header */
 header { background: var(--sun); border-bottom: 4px solid var(--sun-deep); color: #2b2140; }
 header .wrap { padding-block: 12px; display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; justify-content: space-between; }
-.brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.brand { flex: none; display: flex; align-items: center; gap: 10px; min-width: 0; }
 .logo { width: 42px; height: 42px; flex: none; border-radius: 14px; background: #fff; border: 3px solid #2b2140; display: flex; align-items: center; justify-content: center; gap: 1px; font-weight: 800; font-size: 15px; transform: rotate(-6deg); box-shadow: 3px 3px 0 #2b2140; }
 .logo b { color: var(--ja-deep); } .logo i { font-style: normal; color: var(--vi-deep); font-family: var(--f-vi); }
 h1 { font-size: 20px; font-weight: 800; margin: 0; line-height: 1.2; }
@@ -54,7 +54,6 @@ h1 small { display: block; font-family: var(--f-vi); font-weight: 700; font-size
 .settings summary::before { content: "▸ "; } .settings[open] summary::before { content: "▾ "; }
 .settings[open] summary { margin-bottom: 8px; }
 .controls { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-@media (min-width: 760px) { .settings summary { display: none; } .settings[open] summary { margin: 0; } header .wrap { flex-wrap: nowrap; } }
 button, select { font: inherit; cursor: pointer; color: inherit; max-width: 100%; }
 select { min-width: 0; font-size: 13px; font-weight: 700; border-radius: 999px; border: 2px solid #2b2140; background: #fff; color: #2b2140; padding: 6px 10px; }
 .field { min-width: 0; flex: 1 1 160px; font: inherit; font-size: 13px; font-weight: 700; border-radius: 999px; border: 2px solid #2b2140; background: #fff; color: #2b2140; padding: 6px 12px; }
@@ -101,9 +100,14 @@ main .wrap { padding-block: 18px; display: flex; flex-direction: column; gap: 14
 .talk.on, .talk.wait { filter: none; }
 .talk.on { animation: bounce 1.2s ease-in-out infinite; }
 @keyframes bounce { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-4px) } }
-#stop { width: 56px; height: 56px; border-radius: 50%; border: none; background: var(--sun); box-shadow: 0 5px 0 var(--sun-deep); display: grid; place-items: center; padding: 0; }
-#stop span { width: 18px; height: 18px; border-radius: 4px; background: #2b2140; }
-#stop:active { transform: translateY(4px); box-shadow: 0 1px 0 var(--sun-deep); }
+#center { width: 84px; height: 84px; border-radius: 50%; border: 4px solid var(--surface); background: var(--grape); color: #fff; box-shadow: 0 6px 0 var(--grape-deep); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; padding: 0; font-weight: 800; transition: transform .1s, box-shadow .1s; }
+#center b { font-size: 18px; line-height: 1; } #center small { font-size: 11px; font-family: var(--f-vi); font-weight: 700; opacity: .9; }
+#center .mic { width: 14px; height: 20px; border: 3px solid currentColor; border-radius: 8px; margin-bottom: 2px; }
+#center.running { background: var(--sun); color: #2b2140; box-shadow: 0 6px 0 var(--sun-deep); }
+#center.running .sq { width: 20px; height: 20px; border-radius: 5px; background: #2b2140; margin-bottom: 3px; }
+#center.auto-on { animation: glow 1.6s ease-in-out infinite; }
+@keyframes glow { 0%,100% { box-shadow: 0 6px 0 var(--sun-deep), 0 0 0 0 color-mix(in srgb, var(--grape) 55%, transparent) } 50% { box-shadow: 0 6px 0 var(--sun-deep), 0 0 0 12px transparent } }
+#center:active { transform: translateY(5px); box-shadow: 0 1px 0 transparent; }
 #status { grid-column: 1 / -1; justify-self: center; text-align: center; font-size: 13px; font-weight: 700; color: var(--grape); background: var(--grape-soft); border-radius: 999px; padding: 4px 14px; }
 #status.err { color: #fff; background: var(--ja-deep); }
 @media (max-width: 520px) {
@@ -114,12 +118,12 @@ main .wrap { padding-block: 18px; display: flex; flex-direction: column; gap: 14
   .turn .dst { font-size: 19px; }
   .dock .wrap { gap: 10px; padding-block: 12px 8px; }
   .talk { padding: 16px 6px 14px; border-radius: 20px; }
-  #stop { width: 50px; height: 50px; }
+  #center { width: 74px; height: 74px; } #center b { font-size: 16px; }
   .turn { max-width: calc(100% - 44px); }
   .talk { font-size: 16px; }
   h1 { font-size: 18px; }
 }
-@media (prefers-reduced-motion: reduce) { .turn, .talk.on { animation: none } .talk.on { outline: 4px solid var(--sun); outline-offset: 2px } }
+@media (prefers-reduced-motion: reduce) { .turn, .talk.on, #center.auto-on { animation: none } .talk.on { outline: 4px solid var(--sun); outline-offset: 2px } }
 </style>
 </head>
 <body>
@@ -136,6 +140,8 @@ main .wrap { padding-block: 18px; display: flex; flex-direction: column; gap: 14
     <label class="chk"><input type="checkbox" id="auto" checked> 読み上げ</label>
     <label class="chk"><input type="checkbox" id="aiOn" checked> AI翻訳（やさしい表現）</label>
     <input class="field" type="password" id="apiKey" placeholder="Claude APIキー" autocomplete="off" aria-label="Claude APIキー">
+    <input class="field" type="password" id="azKey" placeholder="Azure 音声キー（自動判定）" autocomplete="off" aria-label="Azure 音声のキー">
+    <input class="field" type="text" id="azRegion" placeholder="地域（例：japaneast）" aria-label="Azure 音声の地域">
     <input class="field wide" type="text" id="family" placeholder="家族メモ（例：日本語はパパ、ベトナム語はママ）" aria-label="家族メモ">
   </div>
   </details>
@@ -162,9 +168,9 @@ main .wrap { padding-block: 18px; display: flex; flex-direction: column; gap: 14
 
 <div class="dock"><div class="wrap">
   <button class="talk" id="talkJa">日本語で話す<small>Người Nhật</small></button>
-  <button id="stop" aria-label="停止" title="停止"><span></span></button>
+  <button id="center" aria-label="自動で通訳を開始"></button>
   <button class="talk" id="talkVi">Nói tiếng Việt<small>ベトナム語</small></button>
-  <div id="status">話す人のボタンを押してください ／ Bấm nút của người nói</div>
+  <div id="status">「自動」を押すと、話した言語を自動で見分けます ／ Bấm “Tự động” để bắt đầu</div>
 </div></div>
 
 <script>
@@ -176,15 +182,23 @@ const L = {
   ja: { hear: 'ja-JP', say: 'ja-JP', cls: '', other: 'vi', btn: '#talkJa', listen: '日本語を聞いています…', voice: '#voiceJa' },
   vi: { hear: 'vi-VN', say: 'vi-VN', cls: 'vi-t', other: 'ja', btn: '#talkVi', listen: 'Đang nghe tiếng Việt…', voice: '#voiceVi' },
 };
-let active = false, lang = 'ja', speaking = false, rec = null, voices = [];
+let active = false, autoOn = false, lang = 'ja', speaking = false, rec = null, voices = [];
 
 function setStatus(t, err) { const s = $('#status'); s.textContent = t; s.classList.toggle('err', !!err); }
 function paintButtons(state) {
+  const on = active || autoOn;
   for (const k of ['ja', 'vi']) {
     const b = $(L[k].btn);
-    b.classList.toggle('on', active && k === lang && state === 'listen');
-    b.classList.toggle('wait', active && k === lang && state !== 'listen');
+    b.classList.toggle('on', on && k === lang && state === 'listen');
+    b.classList.toggle('wait', on && k === lang && state !== 'listen');
   }
+  paintCenter();
+}
+function paintCenter() {
+  const c = $('#center'), running = active || autoOn;
+  c.className = running ? 'running' + (autoOn ? ' auto-on' : '') : '';
+  c.innerHTML = running ? '<span class="sq"></span><small>停止</small>' : '<span class="mic"></span><b>自動</b><small>Tự động</small>';
+  c.setAttribute('aria-label', running ? '停止' : '自動で通訳を開始');
 }
 
 // ---- voices: Google online voice plus any installed ones, Microsoft AI voices first
@@ -381,7 +395,13 @@ function showLive(text, code) {
 async function flush(code) {
   const text = pending.trim(); pending = '';
   if (!text || !active) return;
-  stopRec(); paintButtons('busy'); setStatus('翻訳中… / Đang dịch…');
+  stopRec();
+  await processTurn(text, code);
+  if (active && rec === null) listen($('#pingpong').checked ? L[code].other : code);
+}
+
+async function processTurn(text, code) {
+  paintButtons('busy'); setStatus('翻訳中… / Đang dịch…');
   const to = L[code].other;
   try {
     let out = null, note = '';
@@ -396,7 +416,79 @@ async function flush(code) {
     addTurn(text, out, code);
     if ($('#auto').checked) { setStatus(to === 'vi' ? 'Đang đọc…' : '読み上げ中…'); await speak(out, to); }
   } catch { setStatus('翻訳に失敗しました。インターネット接続を確認してください。', true); }
-  if (active && rec === null) listen($('#pingpong').checked ? to : code);
+}
+
+// ---- auto mode: Azure Speech hears both languages and tells which one was spoken
+const AZ_URL = 'https://cdn.jsdelivr.net/npm/microsoft-cognitiveservices-speech-sdk@1.52.0/distrib/browser/microsoft.cognitiveservices.speech.sdk.bundle-min.js';
+let az = null, autoRec = null, autoBusy = false, deafUntil = 0;
+const autoQueue = [];
+const codeOf = l => String(l || '').toLowerCase().startsWith('vi') ? 'vi' : 'ja';
+// the mic also hears our own read-aloud, so results are dropped while speaking and just after
+const deaf = () => speaking || Date.now() < deafUntil;
+function loadAzure() {
+  if (window.SpeechSDK) return Promise.resolve(window.SpeechSDK);
+  return new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = AZ_URL; s.onload = () => res(window.SpeechSDK); s.onerror = () => rej(new Error('load'));
+    document.head.append(s);
+  });
+}
+function azError(details) {
+  const d = String(details || '');
+  if (/401|403|auth|subscription|key/i.test(d)) return 'Azure のキーか地域が正しくありません。設定を確認してください。';
+  if (/microphone|permission|NotAllowed/i.test(d)) return 'マイクが許可されていません。アドレスバーの🔒からマイクを許可してください。';
+  return '自動判定の音声認識が止まりました。インターネット接続を確認して、もう一度「自動」を押してください。';
+}
+const listeningMsg = () => '自動で聞いています。どちらの言葉でもどうぞ ／ Đang nghe, cứ nói tự nhiên nhé';
+async function startAuto() {
+  const key = $('#azKey').value.trim(), region = $('#azRegion').value.trim() || 'japaneast';
+  if (!key) {
+    $('#settings').open = true; $('#azKey').focus();
+    setStatus('自動判定を使うには、設定に Azure 音声のキーを入れてください。言語ボタンならキーなしで使えます。', true);
+    return;
+  }
+  unlockAudio(); stopManual(); shutUp();
+  setStatus('準備しています… / Đang chuẩn bị…');
+  try { az = await loadAzure(); } catch { setStatus('音声認識の読み込みに失敗しました。インターネット接続を確認してください。', true); return; }
+  const cfg = az.SpeechConfig.fromSubscription(key, region);
+  const detect = az.AutoDetectSourceLanguageConfig.fromLanguages(['ja-JP', 'vi-VN']);
+  detect.mode = az.LanguageIdMode.Continuous;
+  const r = az.SpeechRecognizer.FromConfig(cfg, detect, az.AudioConfig.fromDefaultMicrophoneInput());
+  autoRec = r; autoOn = true;
+  r.recognizing = (_, e) => {
+    if (autoRec !== r || deaf() || autoBusy) return;
+    const code = codeOf(az.AutoDetectSourceLanguageResult.fromResult(e.result).language);
+    lang = code; paintButtons('listen'); showLive(e.result.text, code);
+  };
+  r.recognized = (_, e) => {
+    if (autoRec !== r || deaf() || e.result.reason !== az.ResultReason.RecognizedSpeech) return;
+    const text = (e.result.text || '').trim();
+    if (!text) return;
+    autoQueue.push({ text, code: codeOf(az.AutoDetectSourceLanguageResult.fromResult(e.result).language) });
+    drainAuto();
+  };
+  r.canceled = (_, e) => {
+    if (autoRec !== r || e.reason !== az.CancellationReason.Error) return;
+    stopAll(); setStatus(azError(e.errorDetails), true);
+  };
+  paintButtons('listen'); setStatus(listeningMsg());
+  r.startContinuousRecognitionAsync(() => {}, err => { if (autoRec === r) { stopAll(); setStatus(azError(err), true); } });
+}
+async function drainAuto() {
+  if (autoBusy) return;
+  autoBusy = true;
+  while (autoOn && autoQueue.length) {
+    const { text, code } = autoQueue.shift();
+    lang = code;
+    await processTurn(text, code);
+    deafUntil = Date.now() + 600;
+  }
+  autoBusy = false;
+  if (autoOn) { paintButtons('listen'); setStatus(listeningMsg()); }
+}
+function stopAuto() {
+  const r = autoRec; autoRec = null; autoOn = false; autoQueue.length = 0;
+  if (r) r.stopContinuousRecognitionAsync(() => r.close(), () => r.close());
 }
 
 let unlocked = false;
@@ -405,34 +497,41 @@ function unlockAudio() {
   try { speechSynthesis.speak(new SpeechSynthesisUtterance('')); } catch {}
   try { player.src = 'data:audio/mpeg;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//tQxAADB8AhSmxhIIEVCSiJrDCQBTcu3UrAIwUdkRgQbFAZC1CQEwTJ9mjRvBA4UOLD8nKVOWfh+UlK3z/177OXrfOdKl7pyn3Xf//WreyTRUoAWgBgkOAGbZHBgG1OF6zM82DWbZaUmMBptgQhGjsyYqc9ae9XFz280948NMBWInljyzsNRFLPWdnZGWrddDsjK1unuSrVN9jJsK8KuQtQCtMBjCEtImISdNKJOopIpBFpNSMbIHCSRpRR5iakjTiyzLhchUUBwCgyKiweBv/7UsQbg8isVNoMPMjAAAA0gAAABEVFGmgqK////9bP/6XCykxBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq'; player.play().catch(() => {}); } catch {}
 }
+function stopManual() { active = false; stopRec(); clearTimeout(holdTimer); pending = ''; }
 function begin(code) {
-  unlockAudio();
+  unlockAudio(); stopAuto();
   if (!SR) { setStatus('このブラウザは音声認識に対応していません。Edge か Chrome で開いてください。', true); return; }
   shutUp(); active = true; listen(code);
 }
 function stopAll() {
-  active = false; stopRec(); shutUp(); clearTimeout(holdTimer); pending = '';
+  stopAuto(); stopManual(); shutUp();
   paintButtons(); $('#liveSrc').textContent = ''; $('#liveDst').textContent = '';
   setStatus('停止しました ／ Đã dừng');
 }
-// tapping a speaker button always hands the turn to that person, even mid-speech
+// the center button starts auto mode (or stops whatever is running);
+// a speaker button still hands the turn to that person in that language
+$('#center').onclick = () => (active || autoOn) ? stopAll() : startAuto();
 $('#talkJa').onclick = () => begin('ja');
 $('#talkVi').onclick = () => begin('vi');
-$('#stop').onclick = stopAll;
+paintCenter();
 
-for (const id of ['apiKey', 'family']) {
+for (const id of ['apiKey', 'family', 'azKey', 'azRegion']) {
   try { $('#' + id).value = localStorage.getItem('vi-interp-' + id) || ''; } catch {}
   $('#' + id).addEventListener('change', e => { try { localStorage.setItem('vi-interp-' + id, e.target.value.trim()); } catch {} });
 }
-if (matchMedia('(min-width: 760px)').matches) $('#settings').open = true;
 
-// #demo shows a sample conversation (for checking the design)
-if (location.hash === '#demo') {
-  addTurn('こんにちは、今日はよろしくお願いします。', 'Xin chào, hôm nay rất mong được giúp đỡ.', 'ja');
-  addTurn('Vâng, rất vui được gặp anh!', 'はい、お会いできてうれしいです！', 'vi');
-  $('#liveSrc').textContent = 'Hôm nay trời đẹp quá'; $('#liveSrc').className = 'vi-t';
-  $('#liveDst').textContent = '今日はとてもいい天気ですね';
-  active = true; lang = 'ja'; paintButtons('listen'); setStatus(L.ja.listen);
+// #demo shows a sample family conversation (for screenshots); #demo-light / #demo-dark also pick the theme
+if (location.hash.startsWith('#demo')) {
+  const theme = location.hash.split('-')[1];
+  if (theme) document.documentElement.dataset.theme = theme;
+  addTurn('今日は寒いから、あったかくして出かけてね。', 'Hôm nay trời lạnh đó, em mặc ấm rồi hãy đi nhé.', 'ja');
+  addTurn('Dạ, anh cũng nhớ quàng khăn nha.', 'うん、あなたもマフラー忘れないでね。', 'vi');
+  addTurn('週末はみんなでフォーを食べに行こうか。', 'Cuối tuần cả nhà mình đi ăn phở nha?', 'ja');
+  addTurn('Hay quá! Tụi nhỏ chắc vui lắm đó.', 'いいね！子どもたちもきっと大喜びだよ。', 'vi');
+  lang = 'vi'; autoOn = true;
+  $('#liveSrc').textContent = 'Anh ơi, mai mấy giờ mình đi?'; $('#liveSrc').className = 'vi-t';
+  $('#liveDst').textContent = 'ねえ、明日は何時に出かける？'; $('#liveDst').className = '';
+  paintButtons('listen'); setStatus(listeningMsg());
 }
 </script>
 </body>
