@@ -2,6 +2,7 @@
 const { app } = require('@azure/functions');
 const Anthropic = require('@anthropic-ai/sdk');
 const { guard } = require('../shared');
+const usage = require('../usage');
 
 const SYSTEM = `You interpret a spoken conversation inside a family: one person speaks Japanese, the other speaks Vietnamese.
 Translate the latest utterance into the other language the way a warm, caring family member would say it out loud: gentle, kind, natural spoken language, never stiff or word-for-word.
@@ -20,6 +21,8 @@ app.http('translate', {
   handler: async (request, context) => {
     const blocked = guard(request, 30);
     if (blocked) return blocked;
+    const limited = await usage.check(request, 'translate');
+    if (limited) return limited;
     let body;
     try { body = await request.json(); } catch { return { status: 400, jsonBody: { error: 'json' } }; }
     const text = String(body.text || '').slice(0, 1000);
@@ -42,6 +45,7 @@ app.http('translate', {
         system: SYSTEM,
         messages: [{ role: 'user', content: prompt }],
       });
+      await usage.record(request, 'translate', usage.claudeCost(res.usage));
       if (res.stop_reason === 'refusal') return { status: 422, jsonBody: { error: 'refusal' } };
       const out = res.content.filter(b => b.type === 'text').map(b => b.text).join('').trim();
       return out ? { jsonBody: { text: out } } : { status: 502, jsonBody: { error: 'empty' } };

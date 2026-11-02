@@ -509,10 +509,14 @@ const listeningMsg = () => '自動で聞いています。どちらの言葉で�
 function familyCode() { return $('#familyCode').value.trim(); }
 function hasSpeech() { return !!(familyCode() || $('#azKey').value.trim()); }
 let speechAuth = null; // { token, region, at }
-class ServerError extends Error { constructor(status) { super('server ' + status); this.status = status; } }
+class ServerError extends Error { constructor(status, code) { super('server ' + status); this.status = status; this.code = code; } }
 async function serverFetch(path, options = {}) {
   const res = await fetch('api/' + path, { ...options, headers: { ...(options.headers || {}), 'x-family-code': familyCode() } });
-  if (!res.ok) throw new ServerError(res.status);
+  if (!res.ok) {
+    let code = '';
+    try { code = (await res.json()).error || ''; } catch {}
+    throw new ServerError(res.status, code);
+  }
   // a host without the API (GitHub Pages, the local dev server) answers with the page itself
   if (!(res.headers.get('content-type') || '').includes('json')) throw new ServerError(404);
   return res.json();
@@ -530,11 +534,27 @@ async function speechConfig() {
 }
 function serverMessage(e) {
   if (e && e.status === 401) return '合言葉が違います。設定を確認してください。';
+  if (e && e.code === 'daily') return '今日の利用上限に達しました。明日また使えます。言語ボタン（無料）はこのまま使えます。';
+  if (e && e.code === 'budget') return '今月の利用上限に達しました。来月まで自動判定と AI 翻訳はお休みです。言語ボタン（無料）は使えます。';
   if (e && e.status === 429) return '使いすぎを防ぐため、少し待ってからもう一度お試しください。';
   if (e && e.status === 404) return 'このページではサーバーが使えません。公開ページから開いてください。';
   return null;
 }
 let tokenTimer = null;
+const IDLE_MS = 30_000;
+let lastHeard = 0, idleTimer = null;
+function watchIdle() {
+  clearInterval(idleTimer);
+  lastHeard = Date.now();
+  idleTimer = setInterval(() => {
+    if (!autoOn) { clearInterval(idleTimer); return; }
+    if (autoBusy || speaking) { lastHeard = Date.now(); return; }
+    if (Date.now() - lastHeard > IDLE_MS) {
+      stopAll();
+      setStatus('30秒間お話がなかったので、自動判定を止めました（料金の節約のため）。もう一度「自動」を押すと再開します。');
+    }
+  }, 5000);
+}
 
 async function startAuto() {
   if (!hasSpeech()) {
@@ -554,14 +574,18 @@ async function startAuto() {
   // tokens last 10 minutes; hand the running recognizer a fresh one before that
   clearInterval(tokenTimer);
   if (familyCode()) tokenTimer = setInterval(async () => {
-    try { const a = await speechToken(true); if (autoRec === r) r.authorizationToken = a.token; } catch {}
+    try { const a = await speechToken(true); if (autoRec === r) r.authorizationToken = a.token; }
+    catch (e) { const m = serverMessage(e); if (m && autoRec === r) { stopAll(); setStatus(m, true); } }
   }, 8 * 60_000);
+  watchIdle();
   r.recognizing = (_, e) => {
+    if (autoRec === r) lastHeard = Date.now();
     if (autoRec !== r || deaf() || autoBusy) return;
     const code = codeOf(az.AutoDetectSourceLanguageResult.fromResult(e.result).language);
     lang = code; paintButtons('listen'); showLive(e.result.text, code);
   };
   r.recognized = (_, e) => {
+    if (autoRec === r) lastHeard = Date.now();
     if (autoRec !== r || deaf() || e.result.reason !== az.ResultReason.RecognizedSpeech) return;
     const text = (e.result.text || '').trim();
     if (!text) return;
@@ -588,7 +612,7 @@ async function drainAuto() {
   if (autoOn) { paintButtons('listen'); setStatus(listeningMsg()); }
 }
 function stopAuto() {
-  clearInterval(tokenTimer);
+  clearInterval(tokenTimer); clearInterval(idleTimer);
   const r = autoRec; autoRec = null; autoOn = false; autoQueue.length = 0;
   if (r) r.stopContinuousRecognitionAsync(() => r.close(), () => r.close());
 }
