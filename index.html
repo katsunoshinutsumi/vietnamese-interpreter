@@ -206,13 +206,16 @@ function fillVoices(sel, code) {
   const prev = sel.value;
   const list = voices.filter(v => v.lang.toLowerCase().startsWith(code))
     .sort((a, b) => /natural/i.test(b.name) - /natural/i.test(a.name));
-  sel.innerHTML = `<option value="">${code === 'vi' ? 'VI' : 'JA'}: オンライン音声（Google）</option>`;
+  sel.innerHTML = `<option value="azure">${code === 'vi' ? 'VI: AI音声 HoaiMy（Azure）' : 'JA: AI音声 Nanami（Azure）'}</option>` +
+    `<option value="">${code === 'vi' ? 'VI' : 'JA'}: オンライン音声（Google）</option>`;
   for (const v of list) {
     const o = document.createElement('option'); o.value = v.name;
     o.textContent = `${code.toUpperCase()}: ` + (/natural/i.test(v.name) ? 'AI音声 ' : '') + v.name.replace(/Microsoft |Online \(Natural\) - .*$|Online \(Natural\)/g, '').trim();
     sel.append(o);
   }
-  if (prev && list.some(v => v.name === prev)) sel.value = prev;
+  const hasAzure = !!$('#azKey').value.trim();
+  if (prev && (list.some(v => v.name === prev) || (prev === 'azure' && hasAzure))) sel.value = prev;
+  else if (hasAzure) sel.value = 'azure';
   else { const best = list.find(v => /natural/i.test(v.name)) || (HAS_PROXY ? null : list[0]); if (best) sel.value = best.name; }
 }
 function loadVoices() { voices = speechSynthesis.getVoices(); fillVoices($('#voiceVi'), 'vi'); fillVoices($('#voiceJa'), 'ja'); }
@@ -260,13 +263,43 @@ function speakSystem(text, v) {
     speechSynthesis.speak(u);
   });
 }
+const AZ_VOICES = { vi: 'vi-VN-HoaiMyNeural', ja: 'ja-JP-NanamiNeural' };
+let azPlayer = null;
+async function speakAzure(text, code) {
+  az = az || await loadAzure();
+  const cfg = az.SpeechConfig.fromSubscription($('#azKey').value.trim(), $('#azRegion').value.trim() || 'japaneast');
+  const out = new az.SpeakerAudioDestination();
+  azPlayer = out;
+  const synth = new az.SpeechSynthesizer(cfg, az.AudioConfig.fromSpeakerOutput(out));
+  const pct = Math.round((parseFloat($('#rate').value) - 1) * 100);
+  const esc = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const ssml = `<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="${L[code].say}"><voice name="${AZ_VOICES[code]}"><prosody rate="${pct >= 0 ? '+' : ''}${pct}%">${esc}</prosody></voice></speak>`;
+  await new Promise((res, rej) => {
+    const guard = setTimeout(res, 5000 + text.length * 300);
+    const done = () => { clearTimeout(guard); res(); };
+    out.onAudioEnd = done;
+    synth.speakSsmlAsync(ssml, r => {
+      synth.close();
+      if (r.reason !== az.ResultReason.SynthesizingAudioCompleted) { clearTimeout(guard); rej(new Error(r.errorDetails || 'tts')); }
+    }, e => { synth.close(); clearTimeout(guard); rej(new Error(e)); });
+  });
+  if (azPlayer === out) azPlayer = null;
+}
 async function speak(text, code) {
   shutUp(); speaking = true;
-  const v = voices.find(v => v.name === $(L[code].voice).value);
+  const choice = $(L[code].voice).value;
+  if (choice === 'azure' && $('#azKey').value.trim()) {
+    try { await speakAzure(text, code); speaking = false; return; } catch { /* fall back below */ }
+    if (!speaking) return;
+  }
+  const v = voices.find(v => v.name === choice);
   await (v ? speakSystem(text, v) : speakOnline(text, code));
   speaking = false;
 }
-function shutUp() { speaking = false; speechSynthesis.cancel(); player.pause(); player.onerror?.(); }
+function shutUp() {
+  speaking = false; speechSynthesis.cancel(); player.pause(); player.onerror?.();
+  if (azPlayer) { try { azPlayer.pause(); } catch {} azPlayer.onAudioEnd?.(azPlayer); azPlayer = null; }
+}
 
 // ---- translation (cached, so the live preview makes the final one instant)
 const cache = new Map();
@@ -519,6 +552,8 @@ for (const id of ['apiKey', 'family', 'azKey', 'azRegion']) {
   try { $('#' + id).value = localStorage.getItem('vi-interp-' + id) || ''; } catch {}
   $('#' + id).addEventListener('change', e => { try { localStorage.setItem('vi-interp-' + id, e.target.value.trim()); } catch {} });
 }
+$('#azKey').addEventListener('change', loadVoices);
+loadVoices();
 
 // #demo shows a sample family conversation (for screenshots); #demo-light / #demo-dark also pick the theme
 if (location.hash.startsWith('#demo')) {
