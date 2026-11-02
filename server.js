@@ -1,4 +1,4 @@
-// Serves index.html on http://localhost:8000 (the mic needs a localhost or https page)
+// Serves the app on http://localhost:8000 (the mic needs a localhost or https page)
 // and /tts, which relays Google's online voice so no voice pack has to be installed.
 const http = require('http');
 const https = require('https');
@@ -9,7 +9,11 @@ const tls = require('tls');
 // trust the Windows certificate store too (antivirus or company proxies re-sign HTTPS)
 try { tls.setDefaultCACertificates([...tls.getCACertificates('default'), ...tls.getCACertificates('system')]); } catch {}
 
-const file = path.join(__dirname, 'index.html');
+const TYPES = {
+  '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8',
+  '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.webmanifest': 'application/manifest+json',
+  '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon',
+};
 
 function tts(req, res, url) {
   const q = url.searchParams.get('q') || '';
@@ -25,6 +29,11 @@ function tts(req, res, url) {
 http.createServer((req, res) => {
   const url = new URL(req.url, 'http://localhost');
   if (url.pathname === '/tts') return tts(req, res, url);
-  res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-  fs.createReadStream(file).pipe(res);
+  // static files from this folder; anything unknown gets the app page
+  const rel = decodeURIComponent(url.pathname).replace(/^\/+/, '') || 'index.html';
+  const file = path.join(__dirname, rel);
+  const safe = file.startsWith(__dirname + path.sep) && fs.existsSync(file) && fs.statSync(file).isFile();
+  const target = safe ? file : path.join(__dirname, 'index.html');
+  res.writeHead(200, { 'Content-Type': TYPES[path.extname(target)] || 'application/octet-stream' });
+  fs.createReadStream(target).pipe(res);
 }).listen(8000, () => console.log('通訳ページ: http://localhost:8000'));

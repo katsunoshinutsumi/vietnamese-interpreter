@@ -6,6 +6,11 @@
 <title>ベトナム語通訳</title>
 <meta name="description" content="日本語とベトナム語を、話すだけでその場で通訳して読み上げる会話アプリ。">
 <meta name="theme-color" content="#ffd23f">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="通訳">
 <meta property="og:title" content="ベトナム語通訳 — Phiên dịch Nhật ⇄ Việt">
 <meta property="og:description" content="日本語とベトナム語を、話すだけでその場で通訳して読み上げる会話アプリ。">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;800&family=Nunito:wght@400;700;800&display=swap">
@@ -59,6 +64,11 @@ select { min-width: 0; font-size: 13px; font-weight: 700; border-radius: 999px; 
 .field { min-width: 0; flex: 1 1 160px; font: inherit; font-size: 13px; font-weight: 700; border-radius: 999px; border: 2px solid #2b2140; background: #fff; color: #2b2140; padding: 6px 12px; }
 .field.wide { flex-basis: 260px; }
 .field::placeholder { color: #8a7fa0; font-weight: 400; }
+.chip-btn { font-size: 13px; font-weight: 700; border-radius: 999px; border: 2px solid #2b2140; background: #fff; color: #2b2140; padding: 5px 12px; }
+body.big .turn .src { font-size: 18px; }
+body.big .turn .dst { font-size: 28px; }
+body.big #liveSrc { font-size: 18px; } body.big #liveDst { font-size: 24px; }
+body.big .talk { font-size: 21px; } body.big #status { font-size: 15px; }
 label.chk { display: flex; gap: 5px; align-items: center; font-size: 13px; font-weight: 700; background: rgb(255 255 255 / .6); border-radius: 999px; padding: 5px 10px 5px 8px; }
 label.chk input { accent-color: var(--grape); width: 16px; height: 16px; margin: 0; }
 button:focus-visible, select:focus-visible, label.chk:focus-within { outline: 3px solid var(--grape); outline-offset: 2px; }
@@ -139,6 +149,8 @@ main .wrap { padding-block: 18px; display: flex; flex-direction: column; gap: 14
     <label class="chk"><input type="checkbox" id="pingpong" checked> 交互に自動切替</label>
     <label class="chk"><input type="checkbox" id="auto" checked> 読み上げ</label>
     <label class="chk"><input type="checkbox" id="aiOn" checked> AI翻訳（やさしい表現）</label>
+    <label class="chk"><input type="checkbox" id="bigText"> 大きい文字</label>
+    <button type="button" class="chip-btn" id="clearLog">会話の履歴を消す</button>
     <input class="field" type="password" id="apiKey" placeholder="Claude APIキー" autocomplete="off" aria-label="Claude APIキー">
     <input class="field" type="password" id="azKey" placeholder="Azure 音声キー（自動判定）" autocomplete="off" aria-label="Azure 音声のキー">
     <input class="field" type="text" id="azRegion" placeholder="地域（例：japaneast）" aria-label="Azure 音声の地域">
@@ -365,6 +377,14 @@ function claudeError(e) {
   return 'AI翻訳に失敗したので、Google 翻訳を使いました。';
 }
 
+const LOG_KEY = 'vi-interp-log';
+function saveLog() { try { localStorage.setItem(LOG_KEY, JSON.stringify(history.slice(-100))); } catch {} }
+function restoreLog() {
+  let saved = [];
+  try { saved = JSON.parse(localStorage.getItem(LOG_KEY) || '[]'); } catch {}
+  for (const t of saved) { if (t && t.src && t.dst && L[t.from]) { history.push(t); addTurn(t.src, t.dst, t.from); } }
+}
+
 function addTurn(src, dst, from) {
   document.querySelectorAll('.turn.example').forEach(e => e.remove());
   const to = L[from].other;
@@ -444,6 +464,7 @@ async function processTurn(text, code) {
     }
     if (!out) out = await translate(text, code, to);
     history.push({ from: code, src: text, dst: out });
+    saveLog();
     if (note) setStatus(note, true);
     liveSeq++; $('#liveSrc').textContent = ''; $('#liveDst').textContent = '';
     addTurn(text, out, code);
@@ -553,6 +574,18 @@ for (const id of ['apiKey', 'family', 'azKey', 'azRegion']) {
   $('#' + id).addEventListener('change', e => { try { localStorage.setItem('vi-interp-' + id, e.target.value.trim()); } catch {} });
 }
 $('#azKey').addEventListener('change', loadVoices);
+try { $('#bigText').checked = localStorage.getItem('vi-interp-big') === '1'; } catch {}
+document.body.classList.toggle('big', $('#bigText').checked);
+$('#bigText').addEventListener('change', e => {
+  document.body.classList.toggle('big', e.target.checked);
+  try { localStorage.setItem('vi-interp-big', e.target.checked ? '1' : '0'); } catch {}
+});
+$('#clearLog').addEventListener('click', () => {
+  if (!history.length || !confirm('これまでの会話をこの端末から消しますか？')) return;
+  history.length = 0; saveLog();
+  document.querySelectorAll('.turn:not(.example)').forEach(e => e.remove());
+});
+if (!location.hash.startsWith('#demo')) restoreLog();
 loadVoices();
 
 // #demo shows a sample family conversation (for screenshots); #demo-light / #demo-dark also pick the theme
@@ -568,6 +601,8 @@ if (location.hash.startsWith('#demo')) {
   $('#liveDst').textContent = 'ねえ、明日は何時に出かける？'; $('#liveDst').className = '';
   paintButtons('listen'); setStatus(listeningMsg());
 }
+
+if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
 </script>
 </body>
 </html>
