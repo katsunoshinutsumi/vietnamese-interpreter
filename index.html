@@ -351,13 +351,20 @@ async function getClaude() {
   if (!claude || claudeKey !== key) { claude = new sdk({ apiKey: key, dangerouslyAllowBrowser: true }); claudeKey = key; }
   return claude;
 }
+let serverHasAi = true; // the server answers 'no-ai' when it has no Claude key; then stop asking
 async function translateNatural(text, sl, tl) {
   if (familyCode()) {
-    const j = await serverFetch('translate', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text, sl, family: $('#family').value.trim(), recent: history.slice(-6).map(t => ({ from: t.from, src: t.src })) }),
-    });
-    return j.text || null;
+    if (!serverHasAi) return null;
+    try {
+      const j = await serverFetch('translate', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, sl, family: $('#family').value.trim(), recent: history.slice(-6).map(t => ({ from: t.from, src: t.src })) }),
+      });
+      return j.text || null;
+    } catch (e) {
+      if (e && e.code === 'no-ai') { serverHasAi = false; return null; }
+      throw e;
+    }
   }
   const client = await getClaude();
   if (!client) return null;
@@ -468,7 +475,7 @@ async function processTurn(text, code) {
   const to = L[code].other;
   try {
     let out = null, note = '';
-    if ($('#aiOn').checked && (familyCode() || $('#apiKey').value.trim())) {
+    if ($('#aiOn').checked && ((familyCode() && serverHasAi) || $('#apiKey').value.trim())) {
       setStatus('やさしい表現に整えています… / Đang dịch…');
       try { out = await translateNatural(text, code, to); } catch (e) { note = claudeError(e); }
     }

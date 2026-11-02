@@ -45,7 +45,7 @@ Azure のキーがないときは、「日本語で話す」か「Nói tiếng V
 | --- | --- |
 | 言語判定と文字起こし（自動） | Azure AI Speech の Speech SDK（連続言語判定、ja-JP と vi-VN） |
 | 聞き取り（言語ボタン） | ブラウザの Web Speech API（SpeechRecognition） |
-| 翻訳 | Claude（Opus 5.5、家族向けのやさしい表現）。キーがないときや失敗したときは Google 翻訳、さらに MyMemory |
+| 翻訳 | Google 翻訳（無料）。使えないときは MyMemory。サーバーに Claude のキーを入れた場合だけ、家族向けのやさしい表現の AI 翻訳を使う |
 | 話している途中の訳 | Google 翻訳（速さ優先） |
 | 読み上げ | ブラウザの speechSynthesis。端末に声がないときは Google のオンライン音声 |
 | 画面 | HTML / CSS / JavaScript の1ファイル（フレームワークなし） |

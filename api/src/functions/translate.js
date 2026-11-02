@@ -21,6 +21,8 @@ app.http('translate', {
   handler: async (request, context) => {
     const blocked = guard(request, 30);
     if (blocked) return blocked;
+    // AI translation is optional: without a key the app quietly uses Google Translate
+    if (!process.env.ANTHROPIC_API_KEY) return { status: 503, jsonBody: { error: 'no-ai' } };
     const limited = await usage.check(request, 'translate');
     if (limited) return limited;
     let body;
