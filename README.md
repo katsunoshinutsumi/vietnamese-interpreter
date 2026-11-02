@@ -3,7 +3,9 @@
 日本語とベトナム語で話す家族のための、話すだけでその場で訳して読み上げる会話アプリです。
 1台のスマホやパソコンを家族で囲んで使います。
 
-**公開ページ: https://katsunoshinutsumi.github.io/vietnamese-interpreter/** （スマホでもそのまま使えます）
+**公開ページ: https://wonderful-river-0b353b100.1.azurestaticapps.net/** （スマホでもそのまま使えます。家族の合言葉を設定すれば、キーの入力は不要です）
+
+予備（サーバーなし・自分のキーで使う版）: https://katsunoshinutsumi.github.io/vietnamese-interpreter/
 
 <p>
   <img src="docs/screenshots/desktop-light.png" alt="パソコンで開いた通訳アプリ" width="640">
