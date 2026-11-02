@@ -2,8 +2,9 @@
 const crypto = require('node:crypto');
 
 function passcodeOk(request) {
-  const expected = process.env.FAMILY_CODE || '';
-  const given = request.headers.get('x-family-code') || '';
+  // trimmed on both sides: a stray space pasted into the portal or the app should not lock the family out
+  const expected = (process.env.FAMILY_CODE || '').trim();
+  const given = (request.headers.get('x-family-code') || '').trim();
   if (!expected || !given) return false;
   const a = Buffer.from(expected), b = Buffer.from(given);
   return a.length === b.length && crypto.timingSafeEqual(a, b);

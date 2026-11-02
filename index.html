@@ -545,6 +545,8 @@ function serverMessage(e) {
   if (e && e.code === 'budget') return '今月の利用上限に達しました。来月まで自動判定と AI 翻訳はお休みです。言語ボタン（無料）は使えます。';
   if (e && e.status === 429) return '使いすぎを防ぐため、少し待ってからもう一度お試しください。';
   if (e && e.status === 404) return 'このページではサーバーが使えません。公開ページから開いてください。';
+  if (e && e.code === 'speech') return 'サーバーに登録された Azure 音声のキー（SPEECH_KEY）か地域が正しくないようです。Azure の環境変数を確認してください。';
+  if (e && e.code === 'usage') return '使用量の記録に失敗したため、安全のため止めています。少し待ってからもう一度お試しください。';
   return null;
 }
 let tokenTimer = null;
