@@ -1,0 +1,11 @@
+{
+  "platform": {
+    "apiRuntime": "node:22"
+  },
+  "globalHeaders": {
+    "Permissions-Policy": "microphone=(self)"
+  },
+  "mimeTypes": {
+    ".webmanifest": "application/manifest+json"
+  }
+}

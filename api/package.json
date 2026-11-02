@@ -1,0 +1,11 @@
+{
+  "name": "vietnamese-interpreter-api",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Holds the Azure Speech and Claude keys so family devices only need a passcode.",
+  "main": "src/functions/*.js",
+  "dependencies": {
+    "@anthropic-ai/sdk": "0.132.1",
+    "@azure/functions": "4.16.5"
+  }
+}

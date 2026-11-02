@@ -152,6 +152,7 @@ main .wrap { padding-block: 18px; display: flex; flex-direction: column; gap: 14
     <label class="chk"><input type="checkbox" id="bigText"> 大きい文字</label>
     <button type="button" class="chip-btn" id="clearLog">会話の履歴を消す</button>
     <input class="field" type="password" id="apiKey" placeholder="Claude APIキー" autocomplete="off" aria-label="Claude APIキー">
+    <input class="field" type="password" id="familyCode" placeholder="家族の合言葉（キー不要）" autocomplete="off" aria-label="家族の合言葉">
     <input class="field" type="password" id="azKey" placeholder="Azure 音声キー（自動判定）" autocomplete="off" aria-label="Azure 音声のキー">
     <input class="field" type="text" id="azRegion" placeholder="地域（例：japaneast）" aria-label="Azure 音声の地域">
     <input class="field wide" type="text" id="family" placeholder="家族メモ（例：日本語はパパ、ベトナム語はママ）" aria-label="家族メモ">
@@ -225,7 +226,7 @@ function fillVoices(sel, code) {
     o.textContent = `${code.toUpperCase()}: ` + (/natural/i.test(v.name) ? 'AI音声 ' : '') + v.name.replace(/Microsoft |Online \(Natural\) - .*$|Online \(Natural\)/g, '').trim();
     sel.append(o);
   }
-  const hasAzure = !!$('#azKey').value.trim();
+  const hasAzure = hasSpeech();
   if (prev && (list.some(v => v.name === prev) || (prev === 'azure' && hasAzure))) sel.value = prev;
   else if (hasAzure) sel.value = 'azure';
   else { const best = list.find(v => /natural/i.test(v.name)) || (HAS_PROXY ? null : list[0]); if (best) sel.value = best.name; }
@@ -279,7 +280,7 @@ const AZ_VOICES = { vi: 'vi-VN-HoaiMyNeural', ja: 'ja-JP-NanamiNeural' };
 let azPlayer = null;
 async function speakAzure(text, code) {
   az = az || await loadAzure();
-  const cfg = az.SpeechConfig.fromSubscription($('#azKey').value.trim(), $('#azRegion').value.trim() || 'japaneast');
+  const cfg = await speechConfig();
   const out = new az.SpeakerAudioDestination();
   azPlayer = out;
   const synth = new az.SpeechSynthesizer(cfg, az.AudioConfig.fromSpeakerOutput(out));
@@ -300,7 +301,7 @@ async function speakAzure(text, code) {
 async function speak(text, code) {
   shutUp(); speaking = true;
   const choice = $(L[code].voice).value;
-  if (choice === 'azure' && $('#azKey').value.trim()) {
+  if (choice === 'azure' && hasSpeech()) {
     try { await speakAzure(text, code); speaking = false; return; } catch { /* fall back below */ }
     if (!speaking) return;
   }
@@ -351,6 +352,13 @@ async function getClaude() {
   return claude;
 }
 async function translateNatural(text, sl, tl) {
+  if (familyCode()) {
+    const j = await serverFetch('translate', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, sl, family: $('#family').value.trim(), recent: history.slice(-6).map(t => ({ from: t.from, src: t.src })) }),
+    });
+    return j.text || null;
+  }
   const client = await getClaude();
   if (!client) return null;
   const family = $('#family').value.trim();
@@ -372,6 +380,8 @@ async function translateNatural(text, sl, tl) {
   return out || null;
 }
 function claudeError(e) {
+  const s = serverMessage(e);
+  if (s) return s + ' Google 翻訳を使いました。';
   if (sdk && e instanceof sdk.AuthenticationError) return 'Claude APIキーが正しくありません。Google 翻訳を使いました。';
   if (sdk && e instanceof sdk.RateLimitError) return 'AI翻訳が混み合っています。Google 翻訳を使いました。';
   return 'AI翻訳に失敗したので、Google 翻訳を使いました。';
@@ -458,7 +468,7 @@ async function processTurn(text, code) {
   const to = L[code].other;
   try {
     let out = null, note = '';
-    if ($('#aiOn').checked && $('#apiKey').value.trim()) {
+    if ($('#aiOn').checked && (familyCode() || $('#apiKey').value.trim())) {
       setStatus('やさしい表現に整えています… / Đang dịch…');
       try { out = await translateNatural(text, code, to); } catch (e) { note = claudeError(e); }
     }
@@ -494,21 +504,58 @@ function azError(details) {
   return '自動判定の音声認識が止まりました。インターネット接続を確認して、もう一度「自動」を押してください。';
 }
 const listeningMsg = () => '自動で聞いています。どちらの言葉でもどうぞ ／ Đang nghe, cứ nói tự nhiên nhé';
+// ---- server mode: the family passcode unlocks the keys kept on the server
+// function declarations (hoisted): the voice list calls these before this part of the script runs
+function familyCode() { return $('#familyCode').value.trim(); }
+function hasSpeech() { return !!(familyCode() || $('#azKey').value.trim()); }
+let speechAuth = null; // { token, region, at }
+class ServerError extends Error { constructor(status) { super('server ' + status); this.status = status; } }
+async function serverFetch(path, options = {}) {
+  const res = await fetch('api/' + path, { ...options, headers: { ...(options.headers || {}), 'x-family-code': familyCode() } });
+  if (!res.ok) throw new ServerError(res.status);
+  // a host without the API (GitHub Pages, the local dev server) answers with the page itself
+  if (!(res.headers.get('content-type') || '').includes('json')) throw new ServerError(404);
+  return res.json();
+}
+async function speechToken(force) {
+  if (!force && speechAuth && Date.now() - speechAuth.at < 8 * 60_000) return speechAuth;
+  const j = await serverFetch('token');
+  speechAuth = { token: j.token, region: j.region, at: Date.now() };
+  return speechAuth;
+}
+async function speechConfig() {
+  az = az || await loadAzure();
+  if (familyCode()) { const a = await speechToken(); return az.SpeechConfig.fromAuthorizationToken(a.token, a.region); }
+  return az.SpeechConfig.fromSubscription($('#azKey').value.trim(), $('#azRegion').value.trim() || 'japaneast');
+}
+function serverMessage(e) {
+  if (e && e.status === 401) return '合言葉が違います。設定を確認してください。';
+  if (e && e.status === 429) return '使いすぎを防ぐため、少し待ってからもう一度お試しください。';
+  if (e && e.status === 404) return 'このページではサーバーが使えません。公開ページから開いてください。';
+  return null;
+}
+let tokenTimer = null;
+
 async function startAuto() {
-  const key = $('#azKey').value.trim(), region = $('#azRegion').value.trim() || 'japaneast';
-  if (!key) {
-    $('#settings').open = true; $('#azKey').focus();
-    setStatus('自動判定を使うには、設定に Azure 音声のキーを入れてください。言語ボタンならキーなしで使えます。', true);
+  if (!hasSpeech()) {
+    $('#settings').open = true; $('#familyCode').focus();
+    setStatus('自動判定を使うには、設定に家族の合言葉（または Azure 音声のキー）を入れてください。言語ボタンならそのまま使えます。', true);
     return;
   }
   unlockAudio(); stopManual(); shutUp();
   setStatus('準備しています… / Đang chuẩn bị…');
-  try { az = await loadAzure(); } catch { setStatus('音声認識の読み込みに失敗しました。インターネット接続を確認してください。', true); return; }
-  const cfg = az.SpeechConfig.fromSubscription(key, region);
+  let cfg;
+  try { cfg = await speechConfig(); }
+  catch (e) { setStatus(serverMessage(e) || '音声認識の準備に失敗しました。インターネット接続を確認してください。', true); return; }
   const detect = az.AutoDetectSourceLanguageConfig.fromLanguages(['ja-JP', 'vi-VN']);
   detect.mode = az.LanguageIdMode.Continuous;
   const r = az.SpeechRecognizer.FromConfig(cfg, detect, az.AudioConfig.fromDefaultMicrophoneInput());
   autoRec = r; autoOn = true;
+  // tokens last 10 minutes; hand the running recognizer a fresh one before that
+  clearInterval(tokenTimer);
+  if (familyCode()) tokenTimer = setInterval(async () => {
+    try { const a = await speechToken(true); if (autoRec === r) r.authorizationToken = a.token; } catch {}
+  }, 8 * 60_000);
   r.recognizing = (_, e) => {
     if (autoRec !== r || deaf() || autoBusy) return;
     const code = codeOf(az.AutoDetectSourceLanguageResult.fromResult(e.result).language);
@@ -541,6 +588,7 @@ async function drainAuto() {
   if (autoOn) { paintButtons('listen'); setStatus(listeningMsg()); }
 }
 function stopAuto() {
+  clearInterval(tokenTimer);
   const r = autoRec; autoRec = null; autoOn = false; autoQueue.length = 0;
   if (r) r.stopContinuousRecognitionAsync(() => r.close(), () => r.close());
 }
@@ -569,11 +617,12 @@ $('#talkJa').onclick = () => begin('ja');
 $('#talkVi').onclick = () => begin('vi');
 paintCenter();
 
-for (const id of ['apiKey', 'family', 'azKey', 'azRegion']) {
+for (const id of ['apiKey', 'family', 'azKey', 'azRegion', 'familyCode']) {
   try { $('#' + id).value = localStorage.getItem('vi-interp-' + id) || ''; } catch {}
   $('#' + id).addEventListener('change', e => { try { localStorage.setItem('vi-interp-' + id, e.target.value.trim()); } catch {} });
 }
 $('#azKey').addEventListener('change', loadVoices);
+$('#familyCode').addEventListener('change', () => { speechAuth = null; loadVoices(); });
 try { $('#bigText').checked = localStorage.getItem('vi-interp-big') === '1'; } catch {}
 document.body.classList.toggle('big', $('#bigText').checked);
 $('#bigText').addEventListener('change', e => {
